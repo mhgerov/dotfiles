@@ -118,6 +118,8 @@ fi
 
 alias config='git --git-dir=$HOME/.cfg --work-tree=$HOME'
 
+source ~/git-completion.bash
+
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="/home/mhgerov/.sdkman"
 [[ -s "/home/mhgerov/.sdkman/bin/sdkman-init.sh" ]] && source "/home/mhgerov/.sdkman/bin/sdkman-init.sh"
