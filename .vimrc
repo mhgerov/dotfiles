@@ -7,8 +7,12 @@ call vundle#begin()
 Plugin 'VundleVim/Vundle.vim'
 Plugin 'scrooloose/nerdtree'
 Plugin 'vim-airline/vim-airline'
+Plugin 'tpope/vim-commentary'
+Plugin 'tpope/vim-sensible'
+
 "Language Support
 Plugin 'aklt/plantuml-syntax'
+Bundle 'gabrielelana/vim-markdown'
 
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
