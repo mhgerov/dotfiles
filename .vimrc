@@ -31,6 +31,14 @@ filetype plugin indent on    " required
 
 set mouse=a
 set number relativenumber
-set listchars=tab:▸\ ,eol:¬
+set listchars=tab:→\ ,trail:-,extends:>,precedes:<,nbsp:+,eol:¬
 syntax on
 set tabstop=4 softtabstop=4 shiftwidth=4 noexpandtab
+set splitright splitbelow
+set ignorecase
+set smartcase
+
+map <C-h> <C-w>h
+map <C-j> <C-w>j
+map <C-k> <C-w>k
+map <C-l> <C-w>l
