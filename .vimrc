@@ -5,10 +5,20 @@ set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
 " let Vundle manage Vundle, required
 Plugin 'VundleVim/Vundle.vim'
+
+" Vim Settings
+Plugin 'tpope/vim-sensible'
+" Utility Plugins
 Plugin 'scrooloose/nerdtree'
+Plugin 'mattn/emmet-vim'
 Plugin 'vim-airline/vim-airline'
-"Language Support
+Plugin 'tpope/vim-commentary'
+Plugin 'tpope/vim-fugitive'
+" Syntax Plugins
 Plugin 'aklt/plantuml-syntax'
+Bundle 'gabrielelana/vim-markdown'
+" Theme Plugins
+Plugin 'nlknguyen/papercolor-theme'
 
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
@@ -25,8 +35,15 @@ filetype plugin indent on    " required
 " see :h vundle for more details or wiki for FAQ
 " Put your non-Plugin stuff after this line
 
-set mouse=a
+" set tabstop=4 softtabstop=4 shiftwidth=2 noexpandtab
 set number relativenumber
+set splitright splitbelow
+set ignorecase smartcase
+
+set mouse=a
 set listchars=tab:▸\ ,eol:¬
-syntax on
-set tabstop=4 softtabstop=4 shiftwidth=4 noexpandtab
+
+" Papercolor
+set t_Co=256
+set background=dark
+colorscheme PaperColor
