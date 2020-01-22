@@ -41,9 +41,14 @@ set splitright splitbelow
 set ignorecase smartcase
 
 set mouse=a
-set listchars=tab:▸\ ,eol:¬
+set listchars=tab:→\ ,trail:-,extends:>,precedes:<,nbsp:+,eol:¬
 
 " Papercolor
 set t_Co=256
 set background=dark
 colorscheme PaperColor
+
+map <C-h> <C-w>h
+map <C-j> <C-w>j
+map <C-k> <C-w>k
+map <C-l> <C-w>l
