@@ -43,6 +43,8 @@ set ignorecase smartcase
 set mouse=a
 set listchars=tab:→\ ,trail:-,extends:>,precedes:<,nbsp:+,eol:¬
 
+set ts=2
+
 " Papercolor
 set t_Co=256
 set background=dark
