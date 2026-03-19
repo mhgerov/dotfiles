@@ -207,3 +207,13 @@ bar {
 
 # Use feh config for background image
 exec --no-startup-id ~/.fehbg
+
+# Remove borders
+default_border pixel 2
+default_floating_border pixel 2
+
+# Gaps
+gaps inner 12
+gaps outer 18
+smart_gaps on
+smart_borders on
