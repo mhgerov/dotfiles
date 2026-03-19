@@ -179,30 +179,40 @@ mode "resize" {
 
 bindsym $mod+r mode "resize"
 
-# class                 border  bground text    indicator child_border
-client.focused          #83CAFA #51A2DA #FFFFFF #83CAFA   #51A2DA
-client.focused_inactive #8C8C8C #4C4C4C #FFFFFF #4C4C4C   #8C8C8C
-client.unfocused        #4C4C4C #222222 #888888 #292D2E   #222222
-client.urgent           #EC69A0 #DB3279 #FFFFFF #DB3279   #DB3279
-client.placeholder      #000000 #0C0C0C #FFFFFF #000000   #0C0C0C
+set $bg                #0c0b00
+set $panel             #151100
+set $panel_alt         #1d1600
+set $fg                #ffd86b
+set $muted             #805a00
+set $amber             #ffb000
+set $amber_soft        #ffc94d
+set $purple            #c792ea
+set $cyan              #89ddff
+set $green             #a3be8c
+set $warning           #ff8f00
 
-client.background       #FFFFFF
+# Window title colors
+client.focused         $amber     $panel     $fg       $purple   $amber
+client.focused_inactive $panel_alt $panel_alt $fg       $muted    $panel_alt
+client.unfocused       $panel_alt $bg        $muted    $bg       $panel_alt
+client.urgent          $warning   $warning   $bg       $purple   $warning
+client.placeholder     $panel_alt $panel_alt $muted    $panel_alt $panel_alt
+client.background      $bg
 
-# Start i3bar to display a workspace bar (plus the system information i3status
-# finds out, if available)
+# Optional bar colors in the same palette
 bar {
-  colors {
-    background #000000
-    statusline #FFFFFF
-    separator  #666666
+    colors {
+        background $bg
+        statusline $fg
+        separator  $muted
 
-    focused_workspace  #83CAFA #51A2DA #FFFFFF
-    active_workspace   #3C6EB4 #294172 #FFFFFF
-    inactive_workspace #8C8C8C #4C4C4C #888888
-    urgent_workspace   #EC69A0 #DB3279 #FFFFFF
-    binding_mode       #b691d3 #A07CBC #FFFFFF
-  }
-  status_command i3status
+        focused_workspace  $amber     $panel     $fg
+        active_workspace   $panel_alt $panel_alt $fg
+        inactive_workspace $bg        $bg        $muted
+        urgent_workspace   $warning   $warning   $bg
+        binding_mode       $purple    $purple    $bg
+    }
+    status_command i3status
 }
 
 # Use feh config for background image
@@ -217,3 +227,6 @@ gaps inner 12
 gaps outer 18
 smart_gaps on
 smart_borders on
+
+# Picom
+exec_always --no-startup-id picom
