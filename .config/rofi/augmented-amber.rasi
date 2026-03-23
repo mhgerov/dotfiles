@@ -1,0 +1,150 @@
+/**
+ * Augmented Amber — Rofi Theme
+ * Retro CRT amber aesthetic for rofi launcher
+ * Place at: ~/.config/rofi/augmented-amber.rasi
+ */
+
+* {
+    /* Base Palette */
+    bg:          #0c0b00;
+    panel:       #151100;
+    panel-alt:   #1d1600;
+    fg:          #ffd86b;
+    muted:       #805a00;
+
+    /* Amber Spectrum */
+    amber:       #ffb000;
+    amber-soft:  #ffc94d;
+    amber-bright:#ffd86b;
+
+    /* Semantic Accents */
+    cyan:        #89ddff;
+    purple:      #c792ea;
+
+    /* Borders — low contrast per guidelines */
+    border-col:  #2a1f00;
+
+    /* Rofi variable overrides */
+    background-color:   transparent;
+    text-color:         @fg;
+    font:               "IBM Plex Mono 12";
+}
+
+window {
+    background-color:   @panel-alt;
+    border:             1px;
+    border-color:       @border-col;
+    border-radius:      0px;
+    width:              600px;
+    padding:            0px;
+}
+
+mainbox {
+    background-color:   transparent;
+    spacing:            0px;
+    padding:            0px;
+    children:           [ inputbar, listview ];
+}
+
+/* ── Input bar ──────────────────────────────────────────── */
+
+inputbar {
+    background-color:   @panel;
+    border:             0px 0px 1px 0px;
+    border-color:       @border-col;
+    padding:            10px 14px;
+    spacing:            8px;
+    children:           [ prompt, entry ];
+}
+
+prompt {
+    background-color:   transparent;
+    text-color:         @amber;
+    font:               "IBM Plex Mono Bold 12";
+}
+
+entry {
+    background-color:   transparent;
+    text-color:         @fg;
+    placeholder:        "type to filter...";
+    placeholder-color:  @muted;
+    cursor:             @amber;
+}
+
+/* ── List ───────────────────────────────────────────────── */
+
+listview {
+    background-color:   transparent;
+    padding:            6px 0px;
+    spacing:            0px;
+    lines:              10;
+    columns:            1;
+    scrollbar:          false;
+    fixed-height:       false;
+}
+
+element {
+    background-color:   transparent;
+    text-color:         @fg;
+    padding:            7px 14px;
+    border-radius:      0px;
+    orientation:        horizontal;
+    spacing:            8px;
+}
+
+element.normal.normal {
+    background-color:   transparent;
+    text-color:         @fg;
+}
+
+element.normal.urgent {
+    background-color:   transparent;
+    text-color:         #ff8f00;
+}
+
+element.normal.active {
+    background-color:   transparent;
+    text-color:         @cyan;
+}
+
+/* Selected states */
+element.selected.normal {
+    background-color:   @panel;
+    text-color:         @amber-bright;
+    border:             0px 0px 0px 2px;
+    border-color:       @amber;
+}
+
+element.selected.urgent {
+    background-color:   @panel;
+    text-color:         #ff8f00;
+    border:             0px 0px 0px 2px;
+    border-color:       #ff8f00;
+}
+
+element.selected.active {
+    background-color:   @panel;
+    text-color:         @cyan;
+    border:             0px 0px 0px 2px;
+    border-color:       @cyan;
+}
+
+element-icon {
+    background-color:   transparent;
+    size:               16px;
+    vertical-align:     0.5;
+}
+
+element-text {
+    background-color:   transparent;
+    text-color:         inherit;
+    vertical-align:     0.5;
+}
+
+/* ── No results ─────────────────────────────────────────── */
+
+error-message {
+    background-color:   @panel-alt;
+    text-color:         #ff8f00;
+    padding:            10px 14px;
+}

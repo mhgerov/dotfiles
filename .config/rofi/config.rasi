@@ -1,0 +1,42 @@
+/**
+ * Augmented Amber — Rofi Config
+ * Place at: ~/.config/rofi/config.rasi
+ */
+
+configuration {
+    /* ── Mode ──────────────────────────────────────────── */
+    modi:               "drun,run,window";
+    show-icons:         true;
+    icon-theme:         "Papirus-Dark";
+
+    /* ── dmenu replacement ─────────────────────────────── */
+    /* Call rofi with: rofi -show drun  (app launcher)      */
+    /* Or as dmenu:    rofi -dmenu      (pipe mode)         */
+    /* i3 binding example:                                  */
+    /*   bindsym $mod+d exec rofi -show drun               */
+    dmenu {
+        /* Inherit theme colors — no overrides needed */
+    }
+
+    /* ── Behaviour ─────────────────────────────────────── */
+    case-sensitive:     false;
+    cycle:              true;
+    sidebar-mode:       false;
+    hover-select:       false;
+
+    /* Match on prefix first, then substring */
+    matching:           "fuzzy";
+    sort:               true;
+    sorting-method:     "fzf";
+
+    /* ── Display ───────────────────────────────────────── */
+    display-drun:       " apps";
+    display-run:        " run";
+    display-window:     " windows";
+
+    /* ── Terminal (used by run mode) ───────────────────── */
+    /* Change to your terminal of choice */
+    terminal:           "alacritty";
+}
+
+@theme "~/.config/rofi/augmented-amber.rasi"
