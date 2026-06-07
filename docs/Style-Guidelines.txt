@@ -1,0 +1,235 @@
+:::writing{variant="standard" id="84291"}
+Augmented Amber Theme — System Style Guidelines
+Overview
+
+Augmented Amber is a retro-inspired, terminal-first color system that preserves the 80s amber CRT aesthetic while introducing subtle secondary hues for modern usability and code readability.
+
+The goal is:
+
+Amber-first UI
+
+Minimal but meaningful accent colors
+
+High readability for long coding sessions
+
+Cohesive look across i3, terminal, editor, and TUI tools
+
+1. Core Color Philosophy
+
+Amber is dominant — all UI surfaces, text, and structure should feel amber-based
+
+Secondary colors are semantic, not decorative
+
+Avoid rainbow palettes — limit to 3–4 accent hues max
+
+Contrast comes from hue differences, not just brightness
+
+2. Base Palette
+Primary (UI Foundation)
+
+Background: #0c0b00
+
+Panel: #151100
+
+Panel Alt: #1d1600
+
+Foreground: #ffd86b
+
+Muted: #805a00
+
+Amber Spectrum
+
+Primary Amber: #ffb000
+
+Soft Amber: #ffc94d
+
+Bright Amber: #ffd86b
+
+3. Semantic Accent Colors
+
+These are used sparingly and intentionally:
+
+Keywords / Control Flow → #c792ea (soft purple)
+
+Functions / Highlights → #89ddff (soft cyan)
+
+Strings / Success → #a3be8c (muted green)
+
+Warnings / Urgent → #ff8f00 (orange)
+
+Rules:
+
+Never use all accents at once
+
+Each color should map to a consistent meaning across tools
+
+4. UI Styling Rules
+Backgrounds
+
+Always warm, near-black amber tones
+
+Avoid pure black (#000) unless intentional contrast is needed
+
+Borders / Dividers
+
+Subtle and low contrast:
+
+rgba(255, 176, 0, 0.15–0.25)
+
+Avoid bright or high-contrast borders
+
+Transparency
+
+Optional slight transparency (0.90–0.96)
+
+Should feel like “glass over amber glow,” not washed out
+
+5. Typography
+Preferred Fonts
+
+IBM Plex Mono (recommended)
+
+JetBrains Mono
+
+Fira Code
+
+Style
+
+No excessive ligatures (optional)
+
+Medium weight preferred for readability
+
+Slightly increased line height for terminal/editor
+
+6. Terminal Guidelines
+
+Background: #0c0b00
+
+Foreground: #ffd86b
+
+Cursor: #ffb000
+
+ANSI mapping:
+
+Yellow → amber (primary)
+
+Blue/Cyan → functions/types
+
+Magenta → keywords
+
+Green → strings
+
+Red → warnings (muted, not harsh)
+
+Avoid:
+
+Pure white text
+
+High-saturation blues or reds
+
+7. Editor (Neovim / IDE) Guidelines
+Syntax Mapping
+
+Keywords → purple
+
+Functions → cyan
+
+Strings → green
+
+Comments → dim amber (#805a00)
+
+Types → amber or cyan (consistent choice)
+
+General Rules
+
+Background must match terminal
+
+Avoid bright themes or stark contrast
+
+Prioritize readability over novelty
+
+8. i3 / Window Manager
+
+Focused border → #ffb000
+
+Unfocused → dark panel tone
+
+Urgent → #ff8f00
+
+Indicator (optional accent) → purple
+
+Windows should:
+
+Clearly indicate focus
+
+Not introduce new colors outside palette
+
+9. Polybar / Status Bars
+
+Background → panel color (#151100)
+
+Text → foreground amber
+
+Separator → muted amber
+
+Active workspace → amber highlight
+
+Accents used sparingly for:
+
+CPU / memory → cyan
+
+Battery → green
+
+Alerts → orange
+
+10. Rofi / Launcher
+
+Background → panel alt (#1d1600)
+
+Selection → amber highlight
+
+Text → foreground
+
+Accent (optional) → cyan or purple (not both heavily)
+
+Keep UI:
+
+Minimal
+
+Flat
+
+Terminal-like
+
+11. General Design Principles
+
+Consistency > creativity
+
+Less color = more clarity
+
+Everything should look like it belongs to the same machine
+
+If it wouldn’t exist on a 1980s terminal, tone it down
+
+12. Anti-Patterns (Avoid)
+
+❌ Bright RGB rainbow themes
+
+❌ Pure grayscale mixed with amber
+
+❌ High-gloss / glassmorphism styles
+
+❌ Excessive transparency
+
+❌ Multiple competing accent colors
+
+13. Overall Aesthetic Goal
+
+A cohesive, retro-futuristic workstation that feels like:
+
+A high-end 1980s terminal
+
+Upgraded with just enough modern color semantics
+
+Built for long, focused coding sessions
+
+:::
