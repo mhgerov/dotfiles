@@ -1,0 +1,154 @@
+/*
+ * Augmented Amber — GTK3 override
+ * Repaints Adwaita-dark into the amber CRT palette. Primarily tuned for Thunar,
+ * but applies to all GTK3 apps so the desktop stays cohesive.
+ * Palette + rules: ~/docs/Style-Guidelines.txt
+ */
+
+/* ---- Palette ---------------------------------------------------------- */
+@define-color bg          #0c0b00;   /* background      */
+@define-color panel       #151100;   /* panel           */
+@define-color panel_alt   #1d1600;   /* panel alt       */
+@define-color fg          #ffd86b;   /* foreground / bright amber */
+@define-color muted       #805a00;   /* muted amber     */
+@define-color amber       #ffb000;   /* primary amber   */
+@define-color soft_amber  #ffc94d;   /* soft amber      */
+@define-color accent_cyan #89ddff;   /* functions/links */
+@define-color warn        #ff8f00;   /* warnings/urgent */
+
+/* Subtle, low-contrast dividers per the spec (rgba amber 0.15–0.25). */
+@define-color amber_line  rgba(255, 176, 0, 0.20);
+
+/* Map GTK's semantic theme colors onto the amber system. */
+@define-color theme_bg_color            @bg;
+@define-color theme_base_color          @panel;
+@define-color theme_fg_color            @fg;
+@define-color theme_text_color          @fg;
+@define-color theme_selected_bg_color   @amber;
+@define-color theme_selected_fg_color   @bg;
+@define-color insensitive_fg_color      @muted;
+@define-color borders                   @amber_line;
+@define-color warning_color             @warn;
+
+/* ---- Global surfaces -------------------------------------------------- */
+* {
+  outline-color: @amber_line;
+}
+
+window, .background, dialog, popover, menu, .csd {
+  background-color: @bg;
+  color: @fg;
+}
+
+/* Panels / views / list areas */
+.view, treeview, textview, list, iconview,
+scrolledwindow, viewport {
+  background-color: @panel;
+  color: @fg;
+}
+.view:selected, treeview:selected, list row:selected, iconview:selected,
+row:selected, *:selected {
+  background-color: @amber;
+  color: @bg;
+}
+/* Hover feedback stays inside the amber family, low contrast. */
+list row:hover, treeview:hover, iconview:hover {
+  background-color: @panel_alt;
+}
+
+/* ---- Headerbar / toolbar (Thunar top strip) -------------------------- */
+headerbar, .titlebar, toolbar, .toolbar {
+  background-color: @panel;
+  color: @fg;
+  border-color: @amber_line;
+  box-shadow: none;
+}
+headerbar:backdrop, .titlebar:backdrop {
+  background-color: @panel;
+  color: @muted;
+}
+
+/* ---- Sidebar (Thunar shortcuts pane) --------------------------------- */
+.sidebar, placessidebar, placessidebar list, .sidebar list {
+  background-color: @panel_alt;
+  color: @fg;
+}
+placessidebar row:selected, .sidebar row:selected {
+  background-color: @amber;
+  color: @bg;
+}
+placessidebar row:hover, .sidebar row:hover {
+  background-color: @panel;
+}
+
+/* ---- Buttons ---------------------------------------------------------- */
+button {
+  background-image: none;
+  background-color: @panel_alt;
+  color: @fg;
+  border: 1px solid @amber_line;
+  text-shadow: none;
+}
+button:hover        { background-color: @panel;      border-color: @amber; }
+button:active,
+button:checked      { background-color: @amber;      color: @bg; }
+button:disabled     { color: @muted;                 border-color: @amber_line; }
+button.flat         { background-color: transparent; border-color: transparent; }
+button.flat:hover   { background-color: @panel_alt; }
+
+/* Location/path bar buttons */
+.path-bar button, .linked > button {
+  background-color: @panel;
+}
+.path-bar button:checked {
+  background-color: @amber;
+  color: @bg;
+}
+
+/* ---- Entries / search / location entry -------------------------------- */
+entry {
+  background-color: @panel_alt;
+  color: @fg;
+  border: 1px solid @amber_line;
+  caret-color: @amber;
+}
+entry:focus { border-color: @amber; }
+selection   { background-color: @amber; color: @bg; }
+
+/* ---- Menus ------------------------------------------------------------ */
+menu, .menu, popover.background, .context-menu {
+  background-color: @panel;
+  color: @fg;
+  border: 1px solid @amber_line;
+}
+menuitem:hover, .menuitem:hover, modelbutton:hover {
+  background-color: @amber;
+  color: @bg;
+}
+
+/* ---- Scrollbars ------------------------------------------------------- */
+scrollbar { background-color: @bg; }
+scrollbar slider {
+  background-color: @muted;
+  border-radius: 6px;
+  min-width: 6px;
+  min-height: 6px;
+}
+scrollbar slider:hover { background-color: @amber; }
+
+/* ---- Statusbar / footer ---------------------------------------------- */
+statusbar, .statusbar {
+  background-color: @panel;
+  color: @muted;
+}
+
+/* ---- Misc: links, progress, separators -------------------------------- */
+*:link, label:link       { color: @accent_cyan; }
+separator                { background-color: @amber_line; }
+progressbar progress     { background-color: @amber; }
+progressbar trough       { background-color: @panel_alt; }
+tooltip {
+  background-color: @panel_alt;
+  color: @fg;
+  border: 1px solid @amber_line;
+}
