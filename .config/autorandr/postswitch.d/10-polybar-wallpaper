@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#
+# Runs after autorandr switches profiles (including the udev hotplug path).
+#
+# polybar bars are bound to a specific monitor (monitor-strict = true in
+# config.ini), so a changed output set orphans them -- they must be relaunched,
+# not just left running. feh likewise needs to repaint for the new geometry.
+
+exec >>"${XDG_STATE_HOME:-$HOME/.local/state}/autorandr-postswitch.log" 2>&1
+echo "=== $(date '+%Y-%m-%d %H:%M:%S') postswitch: profile=${AUTORANDR_CURRENT_PROFILE:-unknown} ==="
+
+[ -x "$HOME/.fehbg" ] && "$HOME/.fehbg"
+[ -x "$HOME/.config/polybar/launch.sh" ] && "$HOME/.config/polybar/launch.sh"
+echo "done"

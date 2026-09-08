@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+#
+# display-reset -- blind-fire display recovery for i3.
+#
+# Why this exists: i3 is not a RandR client. When the only connected output
+# drops (a DP power-save blip on the desktop's lone 4K panel, say), X releases
+# its CRTC and nothing ever re-arms it -- every monitor reports "No Signal"
+# while X, i3 and audio keep running. There is then no visible surface left to
+# fix it from, so this script is bound to a key and must work sight-unseen.
+#
+# Assume nothing is on screen. Never exit early, never `set -e`: each stage is
+# a fallback for the one before it, and the log is the only post-mortem.
+
+LOG="${XDG_STATE_HOME:-$HOME/.local/state}/display-reset.log"
+mkdir -p "$(dirname "$LOG")"
+
+# Keep the log from growing without bound across months of use.
+if [ -f "$LOG" ] && [ "$(stat -c %s "$LOG" 2>/dev/null || echo 0)" -gt 262144 ]; then
+  tail -n 400 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+fi
+
+exec >>"$LOG" 2>&1
+echo "=== $(date '+%Y-%m-%d %H:%M:%S') display-reset on $(hostname) ==="
+
+run() {
+  echo "+ $*"
+  "$@"
+  local rc=$?
+  echo "  -> exit $rc"
+  return $rc
+}
+
+# Outputs X currently reports as having a sink attached, in xrandr order.
+connected_outputs() {
+  xrandr --query 2>/dev/null | awk '/ connected/ {print $1}'
+}
+
+# Count outputs with an active mode (WxH+X+Y). Zero is the failure state.
+enabled_count() {
+  xrandr --query 2>/dev/null | grep -cE ' connected [^(]*[0-9]+x[0-9]+\+[0-9]+\+[0-9]+'
+}
+
+# --- 1. Kick monitors out of DPMS idle -------------------------------------
+# A panel in power-save will not light up even once a CRTC is armed.
+if command -v xset >/dev/null; then
+  run xset dpms force on
+  run xset s reset
+else
+  echo "! xset not installed, skipping DPMS wake"
+fi
+
+# --- 2. Force a fresh connector re-probe -----------------------------------
+# Makes X re-read EDID so the steps below see current reality, not stale state.
+echo "+ xrandr --query (re-probe)"
+xrandr --query >/dev/null 2>&1
+echo "  -> exit $?"
+
+echo "connected: $(connected_outputs | tr '\n' ' ')"
+echo "enabled before: $(enabled_count)"
+
+# --- 3. Preferred path: restore the saved layout for this hardware ---------
+# autorandr fingerprints by EDID, so this picks the right profile on whichever
+# machine this SSD booted -- desktop and laptop keep independent profiles.
+recovered=0
+if command -v autorandr >/dev/null; then
+  # --default horizontal is passed explicitly rather than relying on
+  # settings.ini, so an unknown monitor set still lights up.
+  run autorandr --change --default horizontal && \
+    [ "$(enabled_count)" -gt 0 ] && recovered=1
+else
+  echo "! autorandr not installed, skipping profile restore"
+fi
+
+# --- 4. Fallback: enable everything at its preferred mode ------------------
+# May clone or overlap. That is fine -- the goal here is a picture, any picture.
+if [ "$recovered" -eq 0 ]; then
+  echo "* autorandr did not restore a display, trying xrandr --auto"
+  run xrandr --auto && [ "$(enabled_count)" -gt 0 ] && recovered=1
+fi
+
+# --- 5. Last resort: drive each connected output by hand -------------------
+if [ "$recovered" -eq 0 ]; then
+  echo "* xrandr --auto failed, enabling connected outputs individually"
+  primary=1
+  for out in $(connected_outputs); do
+    if [ "$primary" -eq 1 ]; then
+      run xrandr --output "$out" --auto --primary --pos 0x0
+      primary=0
+    else
+      run xrandr --output "$out" --auto --right-of "$(connected_outputs | head -n1)"
+    fi
+  done
+
+  # If xrandr refused the layout because the framebuffer is too small for it,
+  # retry the first output alone with an explicit --fb sized to its mode.
+  if [ "$(enabled_count)" -eq 0 ]; then
+    first="$(connected_outputs | head -n1)"
+    if [ -n "$first" ]; then
+      mode="$(xrandr --query | grep -A1 "^${first} connected" | tail -n1 | awk '{print $1}')"
+      if [ -n "$mode" ]; then
+        echo "* retrying $first alone with explicit framebuffer $mode"
+        run xrandr --fb "$mode" --output "$first" --auto --primary --pos 0x0
+      fi
+    fi
+  fi
+
+  [ "$(enabled_count)" -gt 0 ] && recovered=1
+fi
+
+echo "enabled after: $(enabled_count)"
+
+# --- 6. Restore the desktop furniture --------------------------------------
+# polybar bars are per-monitor with monitor-strict=true, so they must be
+# relaunched whenever the output set changes or they simply vanish.
+[ -x "$HOME/.fehbg" ] && run "$HOME/.fehbg"
+[ -x "$HOME/.config/polybar/launch.sh" ] && run "$HOME/.config/polybar/launch.sh"
+
+if [ "$recovered" -eq 1 ]; then
+  echo "=== recovered ==="
+  command -v notify-send >/dev/null && \
+    notify-send -u low -t 2500 "Display reset" \
+      "$(enabled_count) output(s) active: $(connected_outputs | tr '\n' ' ')"
+else
+  echo "=== FAILED: no output could be enabled ==="
+  command -v notify-send >/dev/null && \
+    notify-send -u critical "Display reset FAILED" "No output could be enabled. See $LOG"
+fi

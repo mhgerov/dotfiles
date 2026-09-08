@@ -45,6 +45,12 @@ bindsym XF86AudioMicMute exec --no-startup-id pactl set-source-mute @DEFAULT_SOU
 bindsym XF86MonBrightnessUp exec --no-startup-id brightnessctl set +10%
 bindsym XF86MonBrightnessDown exec --no-startup-id brightnessctl set 10%-
 
+# Blind-fire display recovery. i3 is not a RandR client, so if the only
+# connected output drops, X leaves zero CRTCs enabled and every monitor reads
+# "No Signal" while i3 keeps running. X still delivers key events with no
+# display attached, so this binding works on a fully black screen.
+bindsym $mod+Shift+d exec --no-startup-id ~/.local/bin/display-reset
+
 # Use Mouse+$mod to drag floating windows to their wanted position
 floating_modifier $mod
 
