@@ -287,6 +287,33 @@ Font throughout: **IBM Plex Mono**, size 10. Gaps: inner 12, outer 18.
 
 ---
 
+## TODO
+
+Open items from setting up the display recovery. General workstation tasks live
+in `~/docs/TODO.md`.
+
+- [ ] **Save the desktop display profile.** Run `autorandr --save desktop-4k`
+      while booted on the gaming desktop. Until it exists, a blackout there
+      falls back to the generic `horizontal` layout — which does work, but gives
+      a default arrangement rather than the real one.
+
+- [ ] **Verify the `Super`+`Shift`+`D` keypress end to end.** The script is
+      tested against induced zero-CRTC blackouts, but the *binding* has never
+      been exercised by an actual keypress. Test on the laptop first, where
+      `eDP-1` makes failure harmless: run `xrandr --output eDP-1 --off` to go
+      dark, then press the keybind. Repeat on the desktop with
+      `xrandr --output DP-1 --off`, which reproduces the real bug exactly.
+
+- [ ] **Soak test the automatic path.** Leave the desktop idle long enough for
+      the monitor's own DisplayPort power-save to trigger, then confirm it wakes
+      with no keystroke. Check `~/.local/state/autorandr-postswitch.log` and
+      `journalctl -b 0 | grep -i autorandr` to see whether the udev hook fired.
+
+- [ ] **Decide on the GPU driver** after a week or so of living with the fix —
+      see *Known issues* below. No rush by design.
+
+---
+
 ## Known issues and open decisions
 
 ### nouveau vs the proprietary NVIDIA driver
