@@ -156,9 +156,10 @@ Doing that produced the first hard evidence against `nouveau`:
 nouveau 0000:01:00.0: gsp: cli:0xc1d00001 obj:0x00730000 ctrl cmd:0x00731341 failed: 0x00000025
 ```
 
-A GSP display control command failing. It appeared only when the modeset was
-forced — the silent failure logs nothing at all, which is why the original
-incident showed a clean kernel log.
+A GSP display control command failing. Note it is **intermittent**: it appeared
+during one forced modeset but not during a later recovery of the same fault, so
+it is not a required part of the failure. The silent failure itself logs nothing
+at all, which is why the original incident showed a clean kernel log.
 
 **Correction to the original diagnosis.** The first analysis concluded `nouveau`
 was not at fault, reasoning from the absence of kernel errors during the
@@ -385,15 +386,19 @@ in `~/docs/TODO.md`.
       Note it ran against a *healthy* screen, which is what exposed the
       false-success bug now fixed.
 
-- [ ] **Re-test the keybind against failure mode 2.** The script was rewritten
-      after that discovery and has only been tested by direct invocation since.
-      Unplug one monitor, replug, and if the panel stays dark press the keybind
-      rather than running anything by hand — that is now the exact path it is
-      built for.
+- [x] ~~Re-test the keybind against failure mode 2.~~ Done, and it passed.
+      Unplugged `DP-2` at 06:06:17; on replug at 06:06:23 autorandr reported
+      `Config already loaded` with both outputs enabled while the panel stayed
+      dark — failure mode 2 reproduced. The keybind at 06:06:43 cycled both
+      CRTCs, reapplied `desktop-4k --force`, and brought the picture back. All
+      three links now verified: i3 dispatches the binding, the script forces a
+      real re-modeset, and it recovers a genuinely dark panel pressed blind.
 
-- [ ] **Watch whether failure mode 2 recurs on its own.** It has been seen once,
-      induced by a physical replug. If it starts happening without one, that
-      moves the GPU driver swap from "worth doing" to "do it now".
+- [ ] **Watch whether failure mode 2 recurs on its own.** Seen **twice**, and
+      both times on a physical replug — so it reproduces reliably on that
+      trigger rather than being a one-off. Still unknown whether it happens
+      *without* a replug (a monitor's own power-save, a link blip). If it does,
+      that moves the GPU driver swap from "worth doing" to "do it now".
 
 - [ ] **Soak test the automatic path.** Leave the desktop idle long enough for
       the monitor's own DisplayPort power-save to trigger, then confirm it wakes
