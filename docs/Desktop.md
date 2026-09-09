@@ -51,9 +51,9 @@ blackout bug exists.
 |---|---|---|
 | Board / model | MSI PRO B650-P WIFI (MS-7D78) | Acer Aspire A515-57 |
 | CPU | AMD Ryzen 7 7800X3D | Intel Core i5-1235U |
-| GPU | NVIDIA AD104 (RTX 4070), 12 GB | Intel Iris Xe (integrated) |
+| GPU | NVIDIA RTX 4070 SUPER (AD104), 12 GB | Intel Iris Xe (integrated) |
 | Driver | `nouveau` (open source) | `i915` |
-| Display | ViewSonic VX3276-UHD, 4K, on **DP-1** | built-in panel, **eDP-1**, 1920x1080 |
+| Displays | 2x ViewSonic VX3276-UHD 4K@60 — **DP-1** right (primary), **DP-2** left | built-in panel, **eDP-1**, 1920x1080 |
 | Outputs | HDMI-1, DP-1, DP-2, DP-3 | eDP-1, HDMI-1, DP-1, DP-2 |
 | Internal panel | **none** | yes — always there |
 
@@ -93,18 +93,25 @@ provide it.
 
 So on the desktop:
 
-1. The 4K monitor briefly drops — its own DisplayPort power-save, or a link
-   blip. Because `DP-1` is the **only** connected output, X releases its CRTC.
-2. The monitor comes back. X re-probes it, reads its EDID, marks it connected —
-   **and stops there.** Assigning a CRTC is a RandR client's job, and there
-   isn't one.
-3. The X screen now has **zero enabled CRTCs**. Every monitor reports "No
-   Signal" while X, i3, picom and audio keep running normally. Hence the music.
+1. A monitor briefly drops — its own DisplayPort power-save, or a link blip. X
+   releases that output's CRTC.
+2. It comes back. X re-probes it, reads its EDID, marks it connected — **and
+   stops there.** Assigning a CRTC is a RandR client's job, and there isn't one.
+3. If that was the last enabled output, the X screen now has **zero enabled
+   CRTCs**. Every monitor reports "No Signal" while X, i3, picom and audio keep
+   running normally. Hence the music.
 
 **This is desktop-only for a structural reason.** The laptop's `eDP-1` always
 holds a CRTC, so losing an external monitor can never black out everything —
 there is always a surface left to fix things from. The desktop has no internal
-panel. Lose `DP-1` and there is nothing left.
+panel, so once its last output drops there is nothing left to recover from.
+
+**How many monitors matters.** The original total blackout happened during a
+session where only `DP-1` was connected, so one drop was enough to kill
+everything. With both panels attached there is redundancy — losing one leaves
+the other, and you get a survivable half-broken desktop rather than a black
+one. A total blackout now needs both to drop (a shared dock, a power event, or
+the GPU dropping the whole link).
 
 `nouveau` is *not* the cause — there were no kernel errors when this happened,
 and the monitor's EDID read perfectly. See *Known issues* below.
@@ -126,8 +133,26 @@ directory on the shared SSD.
 | Delete one | `autorandr --remove <name>` |
 | Preview without applying | `autorandr --load <name> --dry-run` |
 
-Current profiles: `laptop-solo` (built-in panel only). Save `desktop-4k` on the
-gaming desktop if it isn't there yet.
+Current profiles:
+
+| Profile | Layout |
+|---|---|
+| `desktop-4k` | dual 4K — `DP-1` right (primary), `DP-2` left, both 3840x2160@60 |
+| `laptop-solo` | built-in panel only, 1920x1080 |
+
+**Two identical monitors.** Both panels are the same model (ViewSonic
+VX3276-UHD, product 20792), distinguishable only by serial — `DP-1` is
+VSY211500285, `DP-2` is VSY211500219. Their EDIDs therefore differ and
+`match-edid` can tell them apart. If you ever add a third identical panel whose
+serial is blank or duplicated, `match-edid` could swap screens; check with
+`cat ~/.config/autorandr/desktop-4k/setup` and confirm the EDID strings differ.
+
+**Watch the `primary` flag before saving.** It can strand itself on a
+disconnected output — it was sitting on `HDMI-1` (nothing plugged in) when
+`desktop-4k` was first saved, which would have baked that into the profile.
+`launch.sh` has a fallback for this, but it means polybar guesses instead of
+knowing. Check with `xrandr --query | grep primary` and fix with
+`xrandr --output DP-1 --primary` before `--save`.
 
 **After changing a monitor arrangement, save it** — otherwise autorandr has
 nothing to restore and falls back to a generic layout:
@@ -292,17 +317,17 @@ Font throughout: **IBM Plex Mono**, size 10. Gaps: inner 12, outer 18.
 Open items from setting up the display recovery. General workstation tasks live
 in `~/docs/TODO.md`.
 
-- [ ] **Save the desktop display profile.** Run `autorandr --save desktop-4k`
-      while booted on the gaming desktop. Until it exists, a blackout there
-      falls back to the generic `horizontal` layout — which does work, but gives
-      a default arrangement rather than the real one.
+- [x] ~~Save the desktop display profile.~~ Done — `desktop-4k` saved and
+      verified. Recovery from an induced total blackout (both outputs dropped)
+      restored both panels and the primary flag correctly, via
+      `autorandr --change`.
 
-- [ ] **Verify the `Super`+`Shift`+`D` keypress end to end.** The script is
-      tested against induced zero-CRTC blackouts, but the *binding* has never
-      been exercised by an actual keypress. Test on the laptop first, where
-      `eDP-1` makes failure harmless: run `xrandr --output eDP-1 --off` to go
-      dark, then press the keybind. Repeat on the desktop with
-      `xrandr --output DP-1 --off`, which reproduces the real bug exactly.
+- [ ] **Verify the `Super`+`Shift`+`D` keypress itself.** The *script* is now
+      proven on both machines, including a real total blackout on the desktop.
+      The *binding* has still never been fired by an actual keypress — that is
+      the one untested link. On the desktop, drop both outputs with
+      `xrandr --output DP-1 --off --output DP-2 --off`, then press it. Have a
+      phone handy with the TTY fallback from the emergency section.
 
 - [ ] **Soak test the automatic path.** Leave the desktop idle long enough for
       the monitor's own DisplayPort power-save to trigger, then confirm it wakes
@@ -318,13 +343,13 @@ in `~/docs/TODO.md`.
 
 ### nouveau vs the proprietary NVIDIA driver
 
-The RTX 4070 runs on `nouveau`, the open-source driver. It works — it can drive
+The RTX 4070 SUPER runs on `nouveau`, the open-source driver. It works — it can drive
 the card at all only because NVIDIA now publishes GSP firmware — but it leaves a
 lot of gaming performance unused, since clock management and the NVK Vulkan
 driver still trail NVIDIA's own.
 
 Switching to the proprietary driver (`akmod-nvidia-open` from RPM Fusion; the
-4070 is new enough to support the open-kernel-module variant) would recover that
+card is new enough to support the open-kernel-module variant) would recover that
 performance and bring more robust DisplayPort handling. The catch: it is an
 out-of-tree kernel module that rebuilds on every kernel update, and a failed
 rebuild means booting to no GUI — on the machine whose only display is the thing
