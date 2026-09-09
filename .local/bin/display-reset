@@ -58,27 +58,49 @@ echo "  -> exit $?"
 echo "connected: $(connected_outputs | tr '\n' ' ')"
 echo "enabled before: $(enabled_count)"
 
-# --- 3. Preferred path: restore the saved layout for this hardware ---------
-# autorandr fingerprints by EDID, so this picks the right profile on whichever
-# machine this SSD booted -- desktop and laptop keep independent profiles.
+# --- 3. Force a genuine re-modeset -----------------------------------------
+# The important part, learned the hard way. X and the kernel will both happily
+# report an output as connected, enabled and dpms=On while the panel shows
+# nothing at all -- nouveau's GSP display path fails silently on Ada, so the
+# CRTC is armed but the DP link never comes up. In that state autorandr says
+# "Config already loaded" and does nothing, which made an earlier version of
+# this script a no-op that then claimed success.
+#
+# So never trust the reported state: if this script is running, something is
+# wrong by definition. Tear each CRTC down and rebuild it, which is what
+# actually retrains the link. Cycled one output at a time so a working screen
+# is never dark all at once.
+for out in $(connected_outputs); do
+  run xrandr --output "$out" --off
+  run xrandr --output "$out" --auto
+done
+
+# --- 4. Restore the real layout --------------------------------------------
+# The cycle above leaves positions and the primary flag scrambled; the profile
+# puts them back. --force is required because autorandr would otherwise skip
+# the work believing the configuration is already correct.
 recovered=0
 if command -v autorandr >/dev/null; then
-  # --default horizontal is passed explicitly rather than relying on
-  # settings.ini, so an unknown monitor set still lights up.
-  run autorandr --change --default horizontal && \
-    [ "$(enabled_count)" -gt 0 ] && recovered=1
+  profile="$(autorandr --detected 2>/dev/null | head -n1 | awk '{print $1}')"
+  if [ -n "$profile" ]; then
+    echo "* detected profile: $profile"
+    run autorandr --load "$profile" --force
+  else
+    echo "* no saved profile matches this hardware, using horizontal"
+    run autorandr --load horizontal --force
+  fi
+  [ "$(enabled_count)" -gt 0 ] && recovered=1
 else
   echo "! autorandr not installed, skipping profile restore"
 fi
 
-# --- 4. Fallback: enable everything at its preferred mode ------------------
-# May clone or overlap. That is fine -- the goal here is a picture, any picture.
+# --- 5. Fallback: enable everything at its preferred mode -------------------
 if [ "$recovered" -eq 0 ]; then
-  echo "* autorandr did not restore a display, trying xrandr --auto"
+  echo "* profile restore left nothing enabled, trying xrandr --auto"
   run xrandr --auto && [ "$(enabled_count)" -gt 0 ] && recovered=1
 fi
 
-# --- 5. Last resort: drive each connected output by hand -------------------
+# --- 6. Last resort: drive each connected output by hand -------------------
 if [ "$recovered" -eq 0 ]; then
   echo "* xrandr --auto failed, enabling connected outputs individually"
   primary=1
@@ -109,17 +131,19 @@ fi
 
 echo "enabled after: $(enabled_count)"
 
-# --- 6. Restore the desktop furniture --------------------------------------
+# --- 7. Restore the desktop furniture --------------------------------------
 # polybar bars are per-monitor with monitor-strict=true, so they must be
 # relaunched whenever the output set changes or they simply vanish.
 [ -x "$HOME/.fehbg" ] && run "$HOME/.fehbg"
 [ -x "$HOME/.config/polybar/launch.sh" ] && run "$HOME/.config/polybar/launch.sh"
 
 if [ "$recovered" -eq 1 ]; then
-  echo "=== recovered ==="
+  # Deliberately says "re-armed", not "recovered": whether a picture actually
+  # reaches the panel is not something this script can observe.
+  echo "=== re-armed $(enabled_count) output(s) ==="
   command -v notify-send >/dev/null && \
     notify-send -u low -t 2500 "Display reset" \
-      "$(enabled_count) output(s) active: $(connected_outputs | tr '\n' ' ')"
+      "Re-armed $(enabled_count) output(s): $(connected_outputs | tr '\n' ' ')"
 else
   echo "=== FAILED: no output could be enabled ==="
   command -v notify-send >/dev/null && \

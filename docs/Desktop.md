@@ -24,9 +24,18 @@ If that does nothing:
    DISPLAY=:0 XAUTHORITY=/run/lightdm/$USER/xauthority xrandr --auto
    ```
    then `Ctrl` + `Alt` + `F1` to switch back.
-2. Still nothing → power-cycle the monitor itself (not the PC). The panel may be
+2. Still nothing, or a panel is dark while everything *looks* fine (see
+   *Failure mode 2*) → force that output's link to retrain. From a TTY, with
+   `DISPLAY=:0 XAUTHORITY=/run/lightdm/$USER/xauthority` exported:
+   ```
+   xrandr --output DP-2 --off
+   xrandr --output DP-2 --auto
+   autorandr --load desktop-4k --force
+   ```
+   The keybind now does this automatically, so you should rarely need it by hand.
+3. Still nothing → power-cycle the monitor itself (not the PC). The panel may be
    latched in its own power-save state.
-3. Only then reboot.
+4. Only then reboot.
 
 **Do not bother with `Super`+`Shift`+`R`** (i3 restart). It restarts polybar and
 looks like it should help, but it never touches display configuration. It will
@@ -81,10 +90,13 @@ Three layers, cheapest first:
    the safety net for when layer 1 doesn't fire or doesn't help.
 3. **Console fallback.** The TTY commands in the emergency section above.
 
-### Why the blackout happens
+There are **two** distinct failure modes here. Both end with a dark panel, but
+they have different causes and the second one lies to every diagnostic.
 
-Worth understanding, because the failure is counter-intuitive — the computer is
-perfectly healthy while every screen is dark.
+### Failure mode 1: zero enabled CRTCs
+
+Counter-intuitive, because the computer is perfectly healthy while every screen
+is dark.
 
 i3 is **not a RandR client**. GNOME and KDE ship a component (mutter, kwin) that
 watches for monitor hotplug events and reassigns displays automatically. i3
@@ -113,8 +125,48 @@ the other, and you get a survivable half-broken desktop rather than a black
 one. A total blackout now needs both to drop (a shared dock, a power event, or
 the GPU dropping the whole link).
 
-`nouveau` is *not* the cause — there were no kernel errors when this happened,
-and the monitor's EDID read perfectly. See *Known issues* below.
+### Failure mode 2: everything reports healthy, panel still dark
+
+Found by physically unplugging one monitor and plugging it back in — a real
+hotplug, which `xrandr --output ... --off` cannot simulate.
+
+On replug, autorandr's udev hook fired correctly and restored `desktop-4k`.
+`xrandr` showed both outputs connected at the right positions. The kernel agreed
+— `status=connected`, `enabled=enabled`, `dpms=On` for both. **And the left
+panel showed "No Signal" anyway.** The CRTC was armed; the DisplayPort link had
+never come up.
+
+This is worse than a plain blackout, because every diagnostic lies to you:
+
+- `autorandr --change` reports `Config already loaded` and does nothing.
+- Any script checking "how many outputs are enabled?" sees the correct answer
+  and concludes there is nothing to fix.
+
+What fixes it is tearing the CRTC down and rebuilding it, which forces the link
+to retrain:
+
+```bash
+xrandr --output DP-2 --off
+xrandr --output DP-2 --auto
+```
+
+Doing that produced the first hard evidence against `nouveau`:
+
+```
+nouveau 0000:01:00.0: gsp: cli:0xc1d00001 obj:0x00730000 ctrl cmd:0x00731341 failed: 0x00000025
+```
+
+A GSP display control command failing. It appeared only when the modeset was
+forced — the silent failure logs nothing at all, which is why the original
+incident showed a clean kernel log.
+
+**Correction to the original diagnosis.** The first analysis concluded `nouveau`
+was not at fault, reasoning from the absence of kernel errors during the
+original incident. That reasoning was wrong: this failure mode is silent by
+nature, so a clean log was never evidence of a healthy driver. The missing
+RandR client was real and worth fixing, but `nouveau`'s display path is also
+implicated. See *Known issues*.
+
 
 ### autorandr profiles
 
@@ -171,19 +223,25 @@ Settings live in `~/.config/autorandr/settings.ini`:
 
 ### What `display-reset` actually does
 
-`~/.local/bin/display-reset` — tries progressively blunter things until
-something lights up, and logs every step because you can't see the screen while
-it runs:
+`~/.local/bin/display-reset` — tries progressively blunter things, and logs
+every step because you can't see the screen while it runs:
 
 1. `xset dpms force on` — wake monitors out of power-save.
 2. `xrandr --query` — force a fresh re-probe of what's connected.
-3. `autorandr --change --default horizontal` — restore the saved layout. Usual
-   winner.
-4. `xrandr --auto` — enable everything at its preferred mode. May overlap
-   displays; the goal at this point is *a* picture, not a nice one.
-5. Enable each connected output by hand, retrying with an explicit framebuffer
+3. **Cycle every connected output off and back on.** This is the step that
+   actually works, and the reason is in *Failure mode 2* above: the script must
+   never trust the reported state. Done one output at a time so a working
+   screen is never dark all at once.
+4. `autorandr --load <detected profile> --force` — put positions and the
+   primary flag back. `--force` is essential; without it autorandr skips the
+   work believing the config is already correct.
+5. `xrandr --auto` — if the profile left nothing enabled.
+6. Enable each connected output by hand, retrying with an explicit framebuffer
    size if X rejects the layout.
-6. Restore wallpaper (`~/.fehbg`) and relaunch polybar.
+7. Restore wallpaper (`~/.fehbg`) and relaunch polybar.
+
+It reports "**re-armed** N outputs", not "recovered" — whether a picture
+actually reaches the panel is not something any of this can observe.
 
 Polybar **must** be relaunched on any display change: its bars are pinned to a
 specific monitor (`monitor-strict = true`), so they vanish when the output set
@@ -322,20 +380,29 @@ in `~/docs/TODO.md`.
       restored both panels and the primary flag correctly, via
       `autorandr --change`.
 
-- [ ] **Verify the `Super`+`Shift`+`D` keypress itself.** The *script* is now
-      proven on both machines, including a real total blackout on the desktop.
-      The *binding* has still never been fired by an actual keypress — that is
-      the one untested link. On the desktop, drop both outputs with
-      `xrandr --output DP-1 --off --output DP-2 --off`, then press it. Have a
-      phone handy with the TTY fallback from the emergency section.
+- [x] ~~Verify the `Super`+`Shift`+`D` keypress itself.~~ Done — fired from the
+      keybind at 05:57:51 and ran to completion, so i3 dispatches it correctly.
+      Note it ran against a *healthy* screen, which is what exposed the
+      false-success bug now fixed.
+
+- [ ] **Re-test the keybind against failure mode 2.** The script was rewritten
+      after that discovery and has only been tested by direct invocation since.
+      Unplug one monitor, replug, and if the panel stays dark press the keybind
+      rather than running anything by hand — that is now the exact path it is
+      built for.
+
+- [ ] **Watch whether failure mode 2 recurs on its own.** It has been seen once,
+      induced by a physical replug. If it starts happening without one, that
+      moves the GPU driver swap from "worth doing" to "do it now".
 
 - [ ] **Soak test the automatic path.** Leave the desktop idle long enough for
       the monitor's own DisplayPort power-save to trigger, then confirm it wakes
       with no keystroke. Check `~/.local/state/autorandr-postswitch.log` and
       `journalctl -b 0 | grep -i autorandr` to see whether the udev hook fired.
 
-- [ ] **Decide on the GPU driver** after a week or so of living with the fix —
-      see *Known issues* below. No rush by design.
+- [ ] **Decide on the GPU driver.** Now has a display-stability argument behind
+      it, not just gaming performance — see *Known issues* below. Still not
+      urgent, because the keybind makes the failure survivable.
 
 ---
 
@@ -360,8 +427,16 @@ In favor whenever you do it: Secure Boot is **disabled** (no module-signing
 hassle, the usual failure point) and multiple kernels stay installed, so there
 is a rollback path.
 
-**Deferred deliberately.** Now that a display drop costs one keystroke instead of
-a hard reboot, there is no urgency — judge the swap on gaming performance alone.
+**Revised assessment.** This was originally deferred on the grounds that
+`nouveau` was not implicated and the swap could be judged on gaming performance
+alone. That is no longer accurate. *Failure mode 2* produced a GSP display
+control command failing during a forced modeset, and a silent DP link failure
+where the kernel reported a healthy connector while the panel showed nothing.
+That is a driver-side display bug, not just a missing RandR client.
+
+The recovery keybind makes it survivable, so there is still no emergency. But
+the swap now has two reasons behind it rather than one, and display stability is
+the more compelling of them.
 
 ### Note on this document
 
