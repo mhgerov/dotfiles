@@ -91,6 +91,20 @@ module exists *before* rebooting:
 ls /lib/modules/$(uname -r)/extra/nvidia/    # after: sudo akmods --force
 ```
 
+**A kernel update on *either* machine affects the desktop.** The SSD is shared,
+so a kernel installed while running the laptop is the kernel the desktop will
+boot next. `akmods` builds the nvidia module against kernel headers and does not
+need the GPU present, so building on the laptop works fine — but if that build
+fails or is skipped, the *desktop* is the machine that ends up with no driver,
+and you will not find out until it boots to a black screen. After any kernel
+update, on either machine:
+
+```bash
+ls /lib/modules/<new-kernel>/extra/nvidia/ || sudo akmods --force
+```
+
+The laptop is unaffected either way; it only ever needs `i915`.
+
 **There is no boot splash any more, and that is normal.** The nvidia driver is
 deliberately kept out of the initramfs (`/usr/lib/dracut/dracut.conf.d/99-nvidia-dracut.conf`),
 and `nouveau`/`nova_core` are blacklisted on the kernel command line, so early
@@ -432,18 +446,24 @@ Open items. General workstation tasks live in `~/docs/TODO.md`.
       above describe the *old* driver's behaviour. Unplug and replug a monitor
       and see what actually happens now.
 
-- [ ] **Confirm the Intel laptop still boots.** The nvidia packaging *looks*
-      harmless to it — nvidia is omitted from the initramfs and the Xorg snippet
-      is conditional on `nvidia-drm` being bound — but that is read from the
-      packaging, not observed. Verify on the next laptop boot, and check
-      `~/.config/autorandr` still picks `laptop-solo`.
+- [x] ~~Confirm the Intel laptop still boots.~~ Verified 2026-09-10 on kernel
+      7.2.4: `i915` drives `eDP-1`, **zero** nvidia modules load, X falls through
+      to `modesetting` + glamor on Mesa, and autorandr picks `laptop-solo`
+      correctly from the two saved profiles. The packaging reasoning held.
 
-- [ ] **Optional: enable VA-API decode in Firefox.** `libva-nvidia-driver` is
-      installed and `vainfo` shows NVDEC working, but Firefox does not use it
-      without `media.ffmpeg.vaapi.enabled`, plus `LIBVA_DRIVER_NAME=nvidia` and
-      `MOZ_DISABLE_RDD_SANDBOX=1` in the environment — its decoder sandbox
-      blocks the NVIDIA driver. Would cut CPU further on 4K AV1. Playback is
-      already acceptable without it.
+- [ ] **Verify Firefox VA-API decode actually engages.** Config is in place at
+      `~/.mozilla/firefox/n8xpafwi.default-release/user.js` (three prefs:
+      `media.ffmpeg.vaapi.enabled`, `media.hardware-video-decoding.force-enabled`,
+      `gfx.x11-egl.force-enabled`). `LIBVA_DRIVER_NAME` proved unnecessary —
+      libva auto-detects the NVDEC driver. Not yet confirmed working: play a 4K
+      video on the desktop and check the decoder engine is above zero:
+
+      `nvidia-smi --query-gpu=utilization.decoder --format=csv`
+
+      If it stays at 0%, the missing piece is `MOZ_DISABLE_RDD_SANDBOX=1`, which
+      was deliberately left out — it weakens the sandbox around media decoding, a
+      heavily exploited attack surface. Decide that one knowingly; playback is
+      already fine without hardware decode.
 
 - [ ] **Re-tune picom now the GPU can keep up.** `dual_kawase` blur at strength
       3 across 7680x2160 measurably contributed to the stutter under `nouveau`.
