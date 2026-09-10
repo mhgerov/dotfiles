@@ -58,20 +58,50 @@ blackout bug exists.
 
 | | **Gaming desktop** | **Laptop** |
 |---|---|---|
-| Board / model | MSI PRO B650-P WIFI (MS-7D78) | Acer Aspire A515-57 |
+| Board / model | PowerSpec, MSI PRO B650-P WIFI (MS-7D78) | Acer Aspire A515-57 |
 | CPU | AMD Ryzen 7 7800X3D | Intel Core i5-1235U |
 | GPU | NVIDIA RTX 4070 SUPER (AD104), 12 GB | Intel Iris Xe (integrated) |
-| Driver | `nouveau` (open source) | `i915` |
-| Displays | 2x ViewSonic VX3276-UHD 4K@60 — **DP-1** right (primary), **DP-2** left | built-in panel, **eDP-1**, 1920x1080 |
-| Outputs | HDMI-1, DP-1, DP-2, DP-3 | eDP-1, HDMI-1, DP-1, DP-2 |
+| Driver | **`nvidia` 580.178.04** (open kernel modules) | `i915` |
+| Displays | 2x ViewSonic VX3276-UHD 4K@60 — **DP-0** right (primary), **DP-2** left | built-in panel, **eDP-1**, 1920x1080 |
+| Outputs | DP-0, DP-2 real; HDMI-0, DP-1, DP-3/4/5 phantom | eDP-1, HDMI-1, DP-1, DP-2 |
 | Internal panel | **none** | yes — always there |
 
 **The boot drive:** Transcend TS256GMTE712P NVMe in a Realtek RTL9210 USB
 enclosure, appearing as `/dev/sda`. Btrfs with `compress=zstd:1`, root on the
 `root` subvolume, `/home` on the same device.
 
-Note the connector names differ between machines. Never hardcode an output name
-in a script — always read them from `xrandr --query`.
+Note the connector names differ between machines **and between drivers**. The
+switch from `nouveau` to `nvidia` renamed the desktop's outputs from
+`DP-1`/`DP-2` to `DP-0`/`DP-2`, and added phantom `HDMI-0`, `DP-1`, `DP-3/4/5`
+entries that are permanently disconnected. Never hardcode an output name in a
+script — always read them from `xrandr --query`.
+
+### Booting the desktop
+
+| Entry | Kernel | Graphics | Use |
+|---|---|---|---|
+| default | **7.2.4** | `nvidia` (module built for this kernel only) | normal |
+| fallback | **7.1.13** | `nouveau` (blacklist args removed by hand) | if nvidia breaks |
+
+The nvidia kernel module is built by `akmods` **per kernel**, and only 7.2.4 has
+`kernel-devel` available, so only 7.2.4 has it. On a kernel update, check the
+module exists *before* rebooting:
+
+```bash
+ls /lib/modules/$(uname -r)/extra/nvidia/    # after: sudo akmods --force
+```
+
+**There is no boot splash any more, and that is normal.** The nvidia driver is
+deliberately kept out of the initramfs (`/usr/lib/dracut/dracut.conf.d/99-nvidia-dracut.conf`),
+and `nouveau`/`nova_core` are blacklisted on the kernel command line, so early
+boot has **no GPU driver at all** — nothing can draw the PowerSpec or Fedora
+loading screen. The machine sits apparently dead for a while and then the
+desktop appears. This looks exactly like a failed boot and is not one. Boot was
+left verbose (`rhgb quiet` removed) precisely so there is *something* on screen
+during that gap.
+
+If a boot genuinely fails: hold `Shift` / tap `Esc` at GRUB and pick the 7.1.13
+entry, which runs `nouveau` exactly as before the switch.
 
 ---
 
@@ -190,11 +220,17 @@ Current profiles:
 
 | Profile | Layout |
 |---|---|
-| `desktop-4k` | dual 4K — `DP-1` right (primary), `DP-2` left, both 3840x2160@60 |
+| `desktop-4k` | dual 4K — `DP-0` right (primary), `DP-2` left, both 3840x2160@60 |
 | `laptop-solo` | built-in panel only, 1920x1080 |
 
+**Connector names changed with the driver switch, and `match-edid` absorbed it.**
+Going from `nouveau` to `nvidia` renamed `DP-1` to `DP-0`. autorandr matched the
+saved profile anyway and reported `desktop-4k: renaming display DP-1 to DP-0`.
+The profile has since been re-saved under the new names. This is the payoff for
+`match-edid=1` — without it the profile would simply have stopped matching.
+
 **Two identical monitors.** Both panels are the same model (ViewSonic
-VX3276-UHD, product 20792), distinguishable only by serial — `DP-1` is
+VX3276-UHD, product 20792), distinguishable only by serial — `DP-0` is
 VSY211500285, `DP-2` is VSY211500219. Their EDIDs therefore differ and
 `match-edid` can tell them apart. If you ever add a third identical panel whose
 serial is blank or duplicated, `match-edid` could swap screens; check with
@@ -202,10 +238,13 @@ serial is blank or duplicated, `match-edid` could swap screens; check with
 
 **Watch the `primary` flag before saving.** It can strand itself on a
 disconnected output — it was sitting on `HDMI-1` (nothing plugged in) when
-`desktop-4k` was first saved, which would have baked that into the profile.
+`desktop-4k` was first saved under `nouveau`, which would have baked that into the profile.
 `launch.sh` has a fallback for this, but it means polybar guesses instead of
 knowing. Check with `xrandr --query | grep primary` and fix with
-`xrandr --output DP-1 --primary` before `--save`.
+`xrandr --output DP-0 --primary` before `--save`.
+
+This bit twice: the primary flag stranded itself on a disconnected output again
+immediately after the nvidia switch, this time on `HDMI-0`.
 
 **After changing a monitor arrangement, save it** — otherwise autorandr has
 nothing to restore and falls back to a generic layout:
@@ -373,75 +412,111 @@ Font throughout: **IBM Plex Mono**, size 10. Gaps: inner 12, outer 18.
 
 ## TODO
 
-Open items from setting up the display recovery. General workstation tasks live
-in `~/docs/TODO.md`.
+Open items. General workstation tasks live in `~/docs/TODO.md`.
 
-- [x] ~~Save the desktop display profile.~~ Done — `desktop-4k` saved and
-      verified. Recovery from an induced total blackout (both outputs dropped)
-      restored both panels and the primary flag correctly, via
-      `autorandr --change`.
+- [x] ~~Save the desktop display profile.~~ Done, and re-saved after the driver
+      switch renamed the connectors.
 
-- [x] ~~Verify the `Super`+`Shift`+`D` keypress itself.~~ Done — fired from the
-      keybind at 05:57:51 and ran to completion, so i3 dispatches it correctly.
-      Note it ran against a *healthy* screen, which is what exposed the
-      false-success bug now fixed.
+- [x] ~~Verify the `Super`+`Shift`+`D` keybind, including against failure
+      mode 2.~~ Done under `nouveau`: on replug autorandr reported `Config
+      already loaded` with both outputs enabled while the panel stayed dark, and
+      the keybind cycled both CRTCs and brought the picture back.
 
-- [x] ~~Re-test the keybind against failure mode 2.~~ Done, and it passed.
-      Unplugged `DP-2` at 06:06:17; on replug at 06:06:23 autorandr reported
-      `Config already loaded` with both outputs enabled while the panel stayed
-      dark — failure mode 2 reproduced. The keybind at 06:06:43 cycled both
-      CRTCs, reapplied `desktop-4k --force`, and brought the picture back. All
-      three links now verified: i3 dispatches the binding, the script forces a
-      real re-modeset, and it recovers a genuinely dark panel pressed blind.
+- [x] ~~Decide on the GPU driver.~~ Done 2026-09-10 — switched to proprietary
+      NVIDIA. See *Known issues*.
 
-- [ ] **Watch whether failure mode 2 recurs on its own.** Seen **twice**, and
-      both times on a physical replug — so it reproduces reliably on that
-      trigger rather than being a one-off. Still unknown whether it happens
-      *without* a replug (a monitor's own power-save, a link blip). If it does,
-      that moves the GPU driver swap from "worth doing" to "do it now".
+- [ ] **Re-test both display failure modes under `nvidia`.** Everything known
+      about failure modes 1 and 2 was learned on `nouveau`, and failure mode 2
+      was a `nouveau` display-path bug. It may simply not exist any more, or it
+      may present differently. Until this is retested, the failure-mode sections
+      above describe the *old* driver's behaviour. Unplug and replug a monitor
+      and see what actually happens now.
 
-- [ ] **Soak test the automatic path.** Leave the desktop idle long enough for
-      the monitor's own DisplayPort power-save to trigger, then confirm it wakes
-      with no keystroke. Check `~/.local/state/autorandr-postswitch.log` and
-      `journalctl -b 0 | grep -i autorandr` to see whether the udev hook fired.
+- [ ] **Confirm the Intel laptop still boots.** The nvidia packaging *looks*
+      harmless to it — nvidia is omitted from the initramfs and the Xorg snippet
+      is conditional on `nvidia-drm` being bound — but that is read from the
+      packaging, not observed. Verify on the next laptop boot, and check
+      `~/.config/autorandr` still picks `laptop-solo`.
 
-- [ ] **Decide on the GPU driver.** Now has a display-stability argument behind
-      it, not just gaming performance — see *Known issues* below. Still not
-      urgent, because the keybind makes the failure survivable.
+- [ ] **Optional: enable VA-API decode in Firefox.** `libva-nvidia-driver` is
+      installed and `vainfo` shows NVDEC working, but Firefox does not use it
+      without `media.ffmpeg.vaapi.enabled`, plus `LIBVA_DRIVER_NAME=nvidia` and
+      `MOZ_DISABLE_RDD_SANDBOX=1` in the environment — its decoder sandbox
+      blocks the NVIDIA driver. Would cut CPU further on 4K AV1. Playback is
+      already acceptable without it.
+
+- [ ] **Re-tune picom now the GPU can keep up.** `dual_kawase` blur at strength
+      3 across 7680x2160 measurably contributed to the stutter under `nouveau`.
+      A properly clocked 4070 SUPER should absorb it, but it has not been
+      A/B tested since the switch.
+
+- [ ] **Soak test the automatic path.** Leave the desktop idle long enough for a
+      monitor's own DisplayPort power-save to trigger and confirm it wakes with
+      no keystroke.
+
+- [ ] **Decide whether to restore `rhgb quiet`.** Boot is currently verbose. Left
+      that way deliberately: there is no splash under this setup regardless (see
+      *Booting the desktop*), so verbose at least puts something on screen during
+      the long black gap instead of looking like a dead machine.
 
 ---
 
 ## Known issues and open decisions
 
-### nouveau vs the proprietary NVIDIA driver
+### GPU driver: switched from nouveau to proprietary NVIDIA
 
-The RTX 4070 SUPER runs on `nouveau`, the open-source driver. It works — it can drive
-the card at all only because NVIDIA now publishes GSP firmware — but it leaves a
-lot of gaming performance unused, since clock management and the NVK Vulkan
-driver still trail NVIDIA's own.
+**Done — 2026-09-10.** Running `nvidia` 580.178.04 with the **open kernel
+modules** (`license: Dual MIT/GPL`), from RPM Fusion nonfree.
 
-Switching to the proprietary driver (`akmod-nvidia-open` from RPM Fusion; the
-card is new enough to support the open-kernel-module variant) would recover that
-performance and bring more robust DisplayPort handling. The catch: it is an
-out-of-tree kernel module that rebuilds on every kernel update, and a failed
-rebuild means booting to no GUI — on the machine whose only display is the thing
-that already breaks. The shared SSD adds risk, since the package blacklists
-`nouveau` and rebuilds the initramfs on a root that also boots the Intel laptop.
+Note RPM Fusion ships no `akmod-nvidia-open` package; there is one `akmod-nvidia`
+which builds the open modules by default on Turing and newer. Confirm which you
+actually got with `modinfo nvidia | grep license` — `Dual MIT/GPL` is open,
+`NVIDIA` is the classic closed module.
 
-In favor whenever you do it: Secure Boot is **disabled** (no module-signing
-hassle, the usual failure point) and multiple kernels stay installed, so there
-is a rollback path.
+Installed: `akmod-nvidia xorg-x11-drv-nvidia-cuda libva-nvidia-driver libva-utils`.
+The VA-API package is called **`libva-nvidia-driver`**, not `nvidia-vaapi-driver`.
 
-**Revised assessment.** This was originally deferred on the grounds that
-`nouveau` was not implicated and the swap could be judged on gaming performance
-alone. That is no longer accurate. *Failure mode 2* produced a GSP display
-control command failing during a forced modeset, and a silent DP link failure
-where the kernel reported a healthy connector while the panel showed nothing.
-That is a driver-side display bug, not just a missing RandR client.
+**Why it was worth doing.** Two problems, both measured rather than assumed:
 
-The recovery keybind makes it survivable, so there is still no emergency. But
-the swap now has two reasons behind it rather than one, and display stability is
-the more compelling of them.
+- *Video stutter.* CPU was never the bottleneck — 66% total across 16 cores with
+  the video playing, load 1.59, Firefox's decoder process at 3.3%. The stutter
+  was GPU-bound: `nouveau` could not clock the Ada card properly, so compositing
+  7680x2160 starved. `nvidia-smi` now reports a range of 420 MHz idle to a
+  3105 MHz ceiling, with real power states. Playback is visibly better.
+- *Display stability.* Failure mode 2 above is a `nouveau` display-path bug.
+
+Hardware video decode also came back: `vainfo` reports the NVDEC backend with
+H264, HEVC (Main/Main10/Main12/444), VP9 and **AV1** — AV1 matters because
+YouTube serves it for most 4K, and `nouveau` had no hardware decode path at all.
+
+**What the install got wrong, for next time.** It did not go smoothly and none
+of it was visible in the dnf output:
+
+1. `akmods` built the module for **7.2.4** while the running kernel was
+   **7.1.13** — dnf pulled `kernel-devel` for the newest kernel, not the running
+   one. Rebooting then would have given no driver.
+2. `kernel-devel-matched` dragged in a **partially installed 7.2.4** (no
+   `kernel-modules`, no `kernel` metapackage) as a side effect, and made it the
+   default boot entry.
+3. The install added `rd.driver.blacklist=nouveau,nova_core` to **every** boot
+   entry, including the older kernels that have no nvidia module — silently
+   destroying the fallback. Fixed by hand:
+
+   ```bash
+   sudo grubby --update-kernel=/boot/vmlinuz-7.1.13-100.fc43.x86_64 \
+     --remove-args="rd.driver.blacklist=nouveau,nova_core modprobe.blacklist=nouveau,nova_core"
+   ```
+
+   **Always verify with `sudo grubby --info=ALL` that a working fallback entry
+   still exists before rebooting into a new driver.**
+
+**The dual-machine SSD turned out fine.** nvidia is omitted from the initramfs,
+and the Xorg snippet uses `OutputClass` with `MatchDriver "nvidia-drm"`, so it
+only applies where the nvidia kernel driver is actually bound. On the Acer,
+`i915` drives `eDP-1` and the nvidia module never binds.
+
+**Still open:** whether the Intel laptop really is unaffected — verified by
+reading the packaging, not yet by booting it. Check on the next laptop boot.
 
 ### Note on this document
 
