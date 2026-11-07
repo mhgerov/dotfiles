@@ -1,0 +1,14 @@
+[Default Applications]
+x-scheme-handler/claude-cli=claude-code-url-handler.desktop
+text/plain=nvim-kitty.desktop
+text/markdown=nvim-kitty.desktop
+text/x-log=nvim-kitty.desktop
+application/x-shellscript=nvim-kitty.desktop
+application/json=nvim-kitty.desktop
+application/toml=nvim-kitty.desktop
+application/x-yaml=nvim-kitty.desktop
+text/x-python=nvim-kitty.desktop
+text/x-lua=nvim-kitty.desktop
+
+[Added Associations]
+text/markdown=nvim.desktop;

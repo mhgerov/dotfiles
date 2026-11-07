@@ -28,5 +28,6 @@ unset rc
 alias ll='ls -la'
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 alias vim='nvim'
+export EDITOR=nvim VISUAL=nvim
 alias cls='clear'
 . "$HOME/.cargo/env"

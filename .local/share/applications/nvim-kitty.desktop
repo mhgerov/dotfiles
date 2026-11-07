@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Neovim (kitty)
+Comment=Open files in Neovim inside a kitty window
+Exec=kitty nvim %F
+Terminal=false
+Icon=nvim
+Categories=Utility;TextEditor;
+MimeType=text/plain;text/markdown;text/x-log;application/x-shellscript;application/json;application/toml;application/x-yaml;text/x-python;text/x-lua;
+NoDisplay=true
